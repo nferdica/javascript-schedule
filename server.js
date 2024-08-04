@@ -17,11 +17,9 @@ const flash = require('connect-flash') // Flash messages, mensagens auto-destrut
 
 const routes = require('./routes') // Rotas da aplicação.
 const path = require('path') // Caminhos absolutos.
-const helmet = require('helmet') // Recomendação para maior segurança da aplicacão.
 const csrf = require('csurf') // Tokens criados para formulários, segurança contra aplicativos externos.
 const {middlewareGlobal, checkCsrfError, csrfMiddleware} = require('./src/middlewares/middlewares') // Importando middlewares, funções executadas nas rotas.
 
-app.use(helmet());
 app.use(express.urlencoded({extended: true})); // Serve para postarmso formulários dentro da aplicação!
 app.use(express.json());
 app.use(express.static(path.resolve(__dirname, 'public'))); // Setando caminho dos arquivos estáticos, imagens, estilos...
