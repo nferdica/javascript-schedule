@@ -1,80 +1,109 @@
-const mongoose = require('mongoose')
-const validator = require('validator')
-
+const mongoose = require('mongoose');
+const validator = require('validator');
 
 const ContatoSchema = new mongoose.Schema({
-    nome: {type: String, required: true},
-    sobrenome: {type: String, required: false, default: ''},
-    email: {type: String, required: false, default: ''},
-    telefone: {type: String, required: false, default: ''},
-    criadoEm: {type: Date, default: Date.now},
-})
+    nome: { type: String, required: true },
+    sobrenome: { type: String, required: false, default: '' },
+    email: { type: String, required: false, default: '' },
+    telefone: { type: String, required: false, default: '' },
+    criadoEm: { type: Date, default: Date.now },
+});
 
 const ContatoModel = mongoose.model('Contato', ContatoSchema);
 
-function Contato (body) {
-    this.body = body;
-    this.errors = [];
-    this.contato = null;
-}
-
-Contato.prototype.register = async function() {
-    this.valida()
-    if(this.errors.length > 0) return;
-    this.contato = await ContatoModel.create(this.body)
-}
-
-Contato.prototype.valida = function() {
-    this.cleanUp()
-    // Validação
-    // O e-mail precisa ser valido
-    if(this.body.email && !validator.isEmail(this.body.email)) {
-        this.errors.push('E-mail inválido')
+class Contato {
+    constructor(body) {
+        this.body = body;
+        this.errors = [];
+        this.contato = null;
     }
 
-    if(!this.body.nome) this.errors.push('Nome é um campo obrigátorio')
-    if(!this.body.telefone && !this.body.email) this.errors.push('Voce precisa preencher pelo menos um contato')
-}
+    async register() {
+        this.validate();
+        if (this.errors.length) return;
+        this.contato = await ContatoModel.create(this.body);
+    }
 
-Contato.prototype.cleanUp = function() {
-    for(const key in this.body) {
-        if (typeof this.body[key] !== 'string') {
-            this.body[key] = '';
+    async edit(id) {
+        if (!this.isValidId(id)) return;
+        this.validate();
+        if (this.errors.length) return;
+        this.contato = await ContatoModel.findByIdAndUpdate(id, this.body, { new: true });
+    }
+
+    validate() {
+        this.cleanUp();
+        this.validateEmail();
+        this.validatePhoneNumber();
+        this.validateRequiredFields();
+        this.validateContactPresence();
+    }
+
+    cleanUp() {
+        for (const key in this.body) {
+            if (typeof this.body[key] !== 'string') {
+                this.body[key] = '';
+            }
+        }
+
+        this.body = {
+            nome: this.body.nome,
+            sobrenome: this.body.sobrenome,
+            email: this.body.email,
+            telefone: this.body.telefone,
+        };
+    }
+
+    validateEmail() {
+        if (this.body.email && !validator.isEmail(this.body.email)) {
+            this.errors.push('E-mail inválido');
         }
     }
 
-    this.body = {
-        nome: this.body.nome,
-        sobrenome: this.body.sobrenome,
-        email: this.body.email,
-        telefone: this.body.telefone
-    };
-}
+    validatePhoneNumber() {
+        if (this.body.telefone && !this.isValidPhoneNumber(this.body.telefone)) {
+            this.errors.push('Número de telefone inválido');
+        }
+    }
 
-Contato.prototype.edit = async function(id) {
-    if(typeof id !== 'string') return;
-    this.valida();
-    if(this.errors.length > 0) return;
-    this.contato = await ContatoModel.findByIdAndUpdate(id, this.body, {new: true})
-}
+    validateRequiredFields() {
+        if (!this.body.nome) {
+            this.errors.push('Nome é um campo obrigatório');
+        }
+    }
 
-// Métodos estáticos
-Contato.buscaPorId = async function(id) {
-    if(typeof id !== 'string') return
-    const contato = await ContatoModel.findById(id)
-    return contato;
-}
+    validateContactPresence() {
+        if (!this.body.telefone && !this.body.email) {
+            this.errors.push('Você precisa preencher pelo menos um contato');
+        }
+    }
 
-Contato.buscaContatos = async function() {
-    const contatos = await ContatoModel.find()
-        .sort({criadoEm: -1})
-    return contatos;
-}
+    isValidPhoneNumber(phoneNumber) {
+        const phoneRegex = /^[\d\s\+\-()]{7,15}$/;
+        return phoneRegex.test(phoneNumber);
+    }
 
-Contato.delete = async function(id) {
-    if(typeof id !== 'string') return
-    const contato = await ContatoModel.findOneAndDelete({_id: id})
-    return contato;
+    isValidId(id) {
+        return typeof id === 'string';
+    }
+
+    static async buscaPorId(id) {
+        if (!this.isValidId(id)) return null;
+        return await ContatoModel.findById(id);
+    }
+
+    static async buscaContatos() {
+        return await ContatoModel.find().sort({ criadoEm: -1 });
+    }
+
+    static async delete(id) {
+        if (!this.isValidId(id)) return null;
+        return await ContatoModel.findOneAndDelete({ _id: id });
+    }
+
+    static isValidId(id) {
+        return typeof id === 'string';
+    }
 }
 
 module.exports = Contato;
